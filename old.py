@@ -1,0 +1,299 @@
+import os
+import time
+import random
+import subprocess
+from typing import List, Tuple
+
+# ================== CONFIG ==================
+
+# ADB device id (adb devices se jo aati hai)
+DEVICE_ID = "emulator-5554"
+
+# CapCut template link
+TEMPLATE_URL = "https://www.capcut.com/template-detail/7573250368646221109"
+
+# Kitni baar ye pura flow run karna hai
+EXPORT_COUNT = 1  # abhi 1 rakho, baad me badha sakte ho
+
+# Random delay range (seconds)
+DELAY_MIN = 3
+DELAY_MAX = 7
+
+# Export render ke liye special wait (zyada rakho)
+EXPORT_WAIT_SECONDS = 7  # apne template ke hisaab se adjust kar sakte ho
+
+# ====== Coordinates (720 x 1280 resolution) ======
+
+# Chrome page: "Use template in CapCut" button
+# BROWSER_USE_TEMPLATE: Tuple[int, int] = (315, 1100)
+BROWSER_USE_TEMPLATE: Tuple[int, int] = (365, 1277)
+
+
+# CapCut template screen: "Use template" button
+CC_USE_TEMPLATE: Tuple[int, int] = (270, 1214)
+
+# CapCut editor: jahan tap se gallery/image selection open hota hai
+CLICK_IMAGE_SECTION: Tuple[int, int] = (588, 150)
+
+# Gallery: pehli image
+GALLERY_FIRST_IMAGE: Tuple[int, int] = (150, 345)
+
+# Gallery: confirm / next button
+GALLERY_CONFIRM: Tuple[int, int] = (620, 1180)
+
+# CapCut preview: top-right Export button
+CC_EXPORT_TOP_RIGHT: Tuple[int, int] = (625, 60)
+
+# Export complete screen: final export / save / done button
+FINAL_EXPORT_BTN: Tuple[int, int] = (353, 1090)
+
+# Ads ke coords (filhal mod pe crash aa raha hai to off rakhen)
+AD_CLOSE_X: Tuple[int, int] = (0, 0)
+AD_SKIP_BTN: Tuple[int, int] = (0, 0)
+
+FINAL_EXPORT_WAIT_MIN = 25
+FINAL_EXPORT_WAIT_MAX = 40
+
+# ================== HELPERS ==================
+
+def run(cmd: List[str], wait: bool = True):
+    """Generic shell command runner."""
+    print(">>", " ".join(cmd))
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    if wait:
+        out, err = proc.communicate()
+        if out:
+            print(out.strip())
+        if err and "Warning" not in err:
+            print("ERR:", err.strip())
+    return proc
+
+def adb(args: List[str], wait: bool = True):
+    """Run adb command for given device."""
+    cmd = ["adb", "-s", DEVICE_ID] + args
+    return run(cmd, wait=wait)
+
+def rand_sleep(tag: str = ""):
+    """25–40 sec random delay."""
+    t = random.uniform(DELAY_MIN, DELAY_MAX)
+    if tag:
+        print(f"⏳ {tag} | random sleep: {t:.1f}s")
+    else:
+        print(f"⏳ random sleep: {t:.1f}s")
+    time.sleep(t)
+
+def fixed_sleep(sec: float, tag: str = ""):
+    """Fixed delay (e.g. render wait)."""
+    if tag:
+        print(f"⏳ {tag} | fixed sleep: {sec:.1f}s")
+    else:
+        print(f"⏳ fixed sleep: {sec:.1f}s")
+    time.sleep(sec)
+
+def tap(coord: Tuple[int, int], tag: str = ""):
+    x, y = coord
+    if tag:
+        print(f"👆 TAP {tag}: ({x}, {y})")
+    else:
+        print(f"👆 TAP: ({x}, {y})")
+    adb(["shell", "input", "tap", str(x), str(y)])
+
+def keyevent(code: int, tag: str = ""):
+    if tag:
+        print(f"⌨ keyevent {code} ({tag})")
+    else:
+        print(f"⌨ keyevent {code}")
+    adb(["shell", "input", "keyevent", str(code)])
+
+def screenshot(name: str):
+    remote = "/sdcard/__capcut_auto_screen.png"
+    adb(["shell", "screencap", "-p", remote])
+    adb(["pull", remote, name])
+def get_foreground_package() -> str:
+    """
+    Abhi ka foreground app ka package name return karega.
+    Example: 'com.android.chrome' ya 'com.lemon.lvoverseas'
+    """
+    try:
+        proc = subprocess.Popen(
+            ["adb", "-s", DEVICE_ID, "shell", "dumpsys", "window", "windows"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        out, _ = proc.communicate(timeout=5)
+    except Exception as e:
+        print("ERR get_foreground_package:", e)
+        return ""
+
+    for line in out.splitlines():
+        if "mCurrentFocus" in line or "mFocusedApp" in line:
+            # Typical: mCurrentFocus=Window{... u0 com.android.chrome/com.google...}
+            parts = line.split()
+            for part in parts:
+                if "/" in part and "." in part:
+                    comp = part.strip().strip("}").strip()
+                    pkg = comp.split("/")[0]
+                    return pkg
+    return ""
+
+
+# ================== STEPS ==================
+
+def check_device() -> bool:
+    print("🔍 Checking ADB devices...")
+    proc = subprocess.Popen(["adb", "devices"], stdout=subprocess.PIPE, text=True)
+    out, _ = proc.communicate()
+    print(out)
+    return DEVICE_ID in out
+
+def close_capcut():
+    print("❌ Force closing CapCut...")
+    adb(["shell", "am", "force-stop", "com.lemon.lvoverseas"])
+
+def open_template_in_browser(max_attempts: int = 5):
+    print("🌐 Opening template in Chrome...")
+
+    attempt = 0
+
+    while True:
+        attempt += 1
+        print(f"\n🔁 Attempt #{attempt} to open CapCut via Chrome")
+
+        # 1) Open template link in Chrome
+        adb([
+            "shell", "am", "start",
+            "-a", "android.intent.action.VIEW",
+            "-d", TEMPLATE_URL
+        ])
+
+        # Yahan 4 sec fixed wait (button ready hone ke liye)
+        fixed_sleep(4, "wait for Chrome page & button to be ready")
+
+        # 2) TAP the button (your working coords)
+        print("▶️ Clicking 'Use template in CapCut' button...")
+        tap(BROWSER_USE_TEMPLATE, "BROWSER_USE_TEMPLATE")
+
+        # 3) CapCut ko auto-open hone ke liye 5 sec do
+        fixed_sleep(6, "waiting for CapCut auto-open")
+
+        # 4) Now check if CapCut opened
+        fg = get_foreground_package()
+        print(f"📱 Foreground now: {fg}")
+
+        if fg == "com.lemon.lvoverseas":
+            print("✅ CapCut opened successfully!")
+            return  # <-- exit loop
+
+        print("⚠️ CapCut NOT opened. Retrying...")
+        fixed_sleep(2, "retry delay")
+
+        if attempt >= max_attempts:
+            print("❌ TOO MANY ATTEMPTS. Button coords may be slightly off.")
+            return
+
+
+def capcut_use_template():
+    print("▶️ Clicking 'Use template' inside CapCut...")
+    tap(CC_USE_TEMPLATE, "CC_USE_TEMPLATE")
+    rand_sleep("after CC use template")
+
+def select_image():
+    print("🖼 Opening image section / gallery...")
+    tap(CLICK_IMAGE_SECTION, "CLICK_IMAGE_SECTION")
+    rand_sleep("after open gallery")
+
+    print("🖼 Selecting first image in gallery...")
+    tap(GALLERY_FIRST_IMAGE, "GALLERY_FIRST_IMAGE")
+    rand_sleep("after select first image")
+
+    print("✅ Confirming gallery selection...")
+    tap(GALLERY_CONFIRM, "GALLERY_CONFIRM")
+    rand_sleep("after gallery confirm")
+
+def export_video():
+    print("📤 Clicking EXPORT (top-right)...")
+    tap(CC_EXPORT_TOP_RIGHT, "CC_EXPORT_TOP_RIGHT")
+
+    # Export render wait (yahan random nahi, fixed long wait)
+    fixed_sleep(EXPORT_WAIT_SECONDS, "waiting for render/export")
+
+    # Agar normal version ho aur ad aaye to yahan handle kar sakte:
+    # print("🧹 Trying to close ad...")
+    # tap(AD_CLOSE_X, "AD_CLOSE_X"); rand_sleep("after ad close X")
+    # tap(AD_SKIP_BTN, "AD_SKIP_BTN"); rand_sleep("after ad skip")
+    print("✅ Clicking final export/save button...")
+    tap(FINAL_EXPORT_BTN, "FINAL_EXPORT_BTN")
+
+    # NEW: random wait 25–40 seconds for download to complete
+    wait_time = random.uniform(FINAL_EXPORT_WAIT_MIN, FINAL_EXPORT_WAIT_MAX)
+    print(f"⏳ Waiting {wait_time:.1f} seconds for final export to finish...")
+    time.sleep(wait_time)
+
+
+def one_cycle(index: int):
+    print("\n" + "=" * 60)
+    print(f"🚀 STARTING CYCLE #{index + 1}")
+    print("=" * 60)
+
+    # 0️⃣ CLEAN START — Force close both apps
+    print("❌ Force closing CapCut & Chrome...")
+    adb(["shell", "am", "force-stop", "com.lemon.lvoverseas"])
+    adb(["shell", "am", "force-stop", "com.android.chrome"])
+    rand_sleep("after force closing apps")
+
+    # 1️⃣ OPEN CHROME + TEMPLATE URL
+    open_template_in_browser()
+
+    # 2️⃣ CapCut: Use template
+    capcut_use_template()
+
+    # 3️⃣ Select image
+    select_image()
+
+    # 4️⃣ Export
+    export_video()
+
+    # 5️⃣ END CLEANUP — Force close again
+    print("❌ Ending cycle → closing CapCut & Chrome again...")
+    adb(["shell", "am", "force-stop", "com.lemon.lvoverseas"])
+    adb(["shell", "am", "force-stop", "com.android.chrome"])
+    rand_sleep("after final cleanup")
+
+    print(f"🎉 CYCLE #{index + 1} DONE\n")
+
+# ================== MAIN ==================
+
+def main():
+    if not check_device():
+        print(f"❌ Device {DEVICE_ID} not found in 'adb devices'.")
+        return
+
+    print(f"✅ Using device: {DEVICE_ID}")
+    print(f"🎯 Template URL: {TEMPLATE_URL}")
+    print(f"🔁 Cycles planned: {EXPORT_COUNT}")
+
+    for i in range(EXPORT_COUNT):
+        try:
+            one_cycle(i)
+        except KeyboardInterrupt:
+            print("⏹️ Stopped by user (Ctrl+C).")
+            break
+        except Exception as e:
+            print(f"⚠️ Error in cycle #{i + 1}: {e}")
+            try:
+                screenshot(f"error_cycle_{i + 1}.png")
+            except Exception as _:
+                pass
+            rand_sleep("after error")
+
+    print("✅ Script finished.")
+
+
+if __name__ == "__main__":
+    main()
