@@ -297,3 +297,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def zip_dicts(*dicts: dict) -> dict:
+    result = {}
+    for d in dicts:
+        result.update(d)
+    return result
