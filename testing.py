@@ -437,3 +437,7 @@ if __name__ == "__main__":
 # Stop  say stop hoga progrmam
 
 
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
