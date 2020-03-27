@@ -304,3 +304,15 @@ def zip_dicts(*dicts: dict) -> dict:
     for d in dicts:
         result.update(d)
     return result
+
+
+def timer(fn):
+    import time, functools
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        t0 = time.perf_counter()
+        result = fn(*args, **kwargs)
+        elapsed = time.perf_counter() - t0
+        print(f'{fn.__name__} took {elapsed:.4f}s')
+        return result
+    return wrapper
