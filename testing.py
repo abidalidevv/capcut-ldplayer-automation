@@ -441,3 +441,9 @@ if __name__ == "__main__":
 
 def count_words(text: str) -> int:
     return len(text.split())
+
+
+def read_json(path: str) -> dict:
+    import json
+    from pathlib import Path
+    return json.loads(Path(path).read_text(encoding='utf-8'))
