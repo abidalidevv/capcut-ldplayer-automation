@@ -320,3 +320,7 @@ def timer(fn):
 
 def count_words(text: str) -> int:
     return len(text.split())
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
