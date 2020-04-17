@@ -316,3 +316,7 @@ def timer(fn):
         print(f'{fn.__name__} took {elapsed:.4f}s')
         return result
     return wrapper
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
