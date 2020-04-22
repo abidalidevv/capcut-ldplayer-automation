@@ -447,3 +447,9 @@ def read_json(path: str) -> dict:
     import json
     from pathlib import Path
     return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def parse_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in ('1', 'true', 'yes', 'on')
