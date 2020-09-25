@@ -458,3 +458,8 @@ def parse_bool(value) -> bool:
 def get_env(key: str, default: str = '') -> str:
     import os
     return os.environ.get(key, default)
+
+
+def color_hex_to_rgb(hex_color: str) -> tuple:
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
