@@ -338,3 +338,13 @@ def flatten(nested: list) -> list:
         else:
             result.append(item)
     return result
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    out = base.copy()
+    for k, v in override.items():
+        if k in out and isinstance(out[k], dict) and isinstance(v, dict):
+            out[k] = deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
