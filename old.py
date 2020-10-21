@@ -348,3 +348,9 @@ def deep_merge(base: dict, override: dict) -> dict:
         else:
             out[k] = v
     return out
+
+
+def write_json(path: str, data: dict, indent: int = 2) -> None:
+    import json
+    from pathlib import Path
+    Path(path).write_text(json.dumps(data, indent=indent, ensure_ascii=False))
