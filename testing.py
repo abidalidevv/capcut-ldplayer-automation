@@ -480,3 +480,10 @@ def paginate(items: list, page: int, per_page: int) -> dict:
         'total': total,
         'pages': (total + per_page - 1) // per_page,
     }
+
+
+def zip_dicts(*dicts: dict) -> dict:
+    result = {}
+    for d in dicts:
+        result.update(d)
+    return result
