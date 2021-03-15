@@ -512,3 +512,8 @@ def timer(fn):
         print(f'{fn.__name__} took {elapsed:.4f}s')
         return result
     return wrapper
+
+
+def unique_preserve_order(seq: list) -> list:
+    seen = set()
+    return [x for x in seq if not (x in seen or seen.add(x))]
