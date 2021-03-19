@@ -517,3 +517,7 @@ def timer(fn):
 def unique_preserve_order(seq: list) -> list:
     seen = set()
     return [x for x in seq if not (x in seen or seen.add(x))]
+
+
+def safe_divide(a, b, default=0):
+    return a / b if b != 0 else default
