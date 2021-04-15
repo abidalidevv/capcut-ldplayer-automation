@@ -521,3 +521,11 @@ def unique_preserve_order(seq: list) -> list:
 
 def safe_divide(a, b, default=0):
     return a / b if b != 0 else default
+
+
+def human_size(n_bytes: int) -> str:
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n_bytes < 1024:
+            return f'{n_bytes:.1f} {unit}'
+        n_bytes /= 1024
+    return f'{n_bytes:.1f} PB'
