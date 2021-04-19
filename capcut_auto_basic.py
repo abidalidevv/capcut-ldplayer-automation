@@ -404,3 +404,10 @@ def levenshtein(s1: str, s2: str) -> int:
             curr.append(min(prev[j + 1] + 1, curr[-1] + 1, prev[j] + (c1 != c2)))
         prev = curr
     return prev[-1]
+
+
+def slugify(text: str) -> str:
+    import re
+    text = text.lower().strip()
+    text = re.sub(r'[^\w\s-]', '', text)
+    return re.sub(r'[\s_-]+', '-', text)
