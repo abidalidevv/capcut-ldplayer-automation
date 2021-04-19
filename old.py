@@ -374,3 +374,15 @@ def count_words(text: str) -> int:
 
 def safe_divide(a, b, default=0):
     return a / b if b != 0 else default
+
+
+def timer(fn):
+    import time, functools
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        t0 = time.perf_counter()
+        result = fn(*args, **kwargs)
+        elapsed = time.perf_counter() - t0
+        print(f'{fn.__name__} took {elapsed:.4f}s')
+        return result
+    return wrapper
