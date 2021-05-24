@@ -529,3 +529,7 @@ def human_size(n_bytes: int) -> str:
             return f'{n_bytes:.1f} {unit}'
         n_bytes /= 1024
     return f'{n_bytes:.1f} PB'
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
