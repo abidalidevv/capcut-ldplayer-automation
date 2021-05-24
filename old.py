@@ -386,3 +386,9 @@ def timer(fn):
         print(f'{fn.__name__} took {elapsed:.4f}s')
         return result
     return wrapper
+
+
+def write_json(path: str, data: dict, indent: int = 2) -> None:
+    import json
+    from pathlib import Path
+    Path(path).write_text(json.dumps(data, indent=indent, ensure_ascii=False))
