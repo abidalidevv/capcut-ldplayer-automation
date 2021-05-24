@@ -533,3 +533,7 @@ def human_size(n_bytes: int) -> str:
 
 def count_words(text: str) -> int:
     return len(text.split())
+
+
+def clamp(value, lo, hi):
+    return max(lo, min(hi, value))
