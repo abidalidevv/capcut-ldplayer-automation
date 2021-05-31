@@ -416,3 +416,7 @@ def slugify(text: str) -> str:
 def get_env(key: str, default: str = '') -> str:
     import os
     return os.environ.get(key, default)
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
