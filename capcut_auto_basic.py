@@ -425,3 +425,8 @@ def count_words(text: str) -> int:
 def color_hex_to_rgb(hex_color: str) -> tuple:
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+
+def snake_to_camel(name: str) -> str:
+    components = name.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
