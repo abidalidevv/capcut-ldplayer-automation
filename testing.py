@@ -537,3 +537,8 @@ def count_words(text: str) -> int:
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
+
+
+def get_env(key: str, default: str = '') -> str:
+    import os
+    return os.environ.get(key, default)
