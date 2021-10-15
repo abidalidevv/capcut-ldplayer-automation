@@ -404,3 +404,8 @@ def timer(fn):
         print(f'{fn.__name__} took {elapsed:.4f}s')
         return result
     return wrapper
+
+
+def snake_to_camel(name: str) -> str:
+    components = name.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
