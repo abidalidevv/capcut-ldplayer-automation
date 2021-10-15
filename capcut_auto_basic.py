@@ -430,3 +430,7 @@ def color_hex_to_rgb(hex_color: str) -> tuple:
 def snake_to_camel(name: str) -> str:
     components = name.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def remove_duplicates(lst: list) -> list:
+    return list(dict.fromkeys(lst))
