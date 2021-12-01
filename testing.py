@@ -556,3 +556,9 @@ def levenshtein(s1: str, s2: str) -> int:
             curr.append(min(prev[j + 1] + 1, curr[-1] + 1, prev[j] + (c1 != c2)))
         prev = curr
     return prev[-1]
+
+
+def read_json(path: str) -> dict:
+    import json
+    from pathlib import Path
+    return json.loads(Path(path).read_text(encoding='utf-8'))
