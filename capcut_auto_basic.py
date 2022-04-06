@@ -444,3 +444,8 @@ def deep_merge(base: dict, override: dict) -> dict:
         else:
             out[k] = v
     return out
+
+
+def get_env(key: str, default: str = '') -> str:
+    import os
+    return os.environ.get(key, default)
