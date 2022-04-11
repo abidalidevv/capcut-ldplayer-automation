@@ -409,3 +409,7 @@ def timer(fn):
 def snake_to_camel(name: str) -> str:
     components = name.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
