@@ -449,3 +449,7 @@ def deep_merge(base: dict, override: dict) -> dict:
 def get_env(key: str, default: str = '') -> str:
     import os
     return os.environ.get(key, default)
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
