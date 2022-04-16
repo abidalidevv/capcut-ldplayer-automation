@@ -572,3 +572,9 @@ def write_json(path: str, data: dict, indent: int = 2) -> None:
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
+
+
+def read_json(path: str) -> dict:
+    import json
+    from pathlib import Path
+    return json.loads(Path(path).read_text(encoding='utf-8'))
