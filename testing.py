@@ -568,3 +568,7 @@ def write_json(path: str, data: dict, indent: int = 2) -> None:
     import json
     from pathlib import Path
     Path(path).write_text(json.dumps(data, indent=indent, ensure_ascii=False))
+
+
+def clamp(value, lo, hi):
+    return max(lo, min(hi, value))
