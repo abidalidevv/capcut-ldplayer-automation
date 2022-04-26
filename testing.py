@@ -578,3 +578,10 @@ def read_json(path: str) -> dict:
     import json
     from pathlib import Path
     return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def batch(iterable, n: int):
+    from itertools import islice
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
