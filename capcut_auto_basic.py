@@ -461,3 +461,11 @@ class SingletonMeta(type):
         if cls not in cls._instances:
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+def human_size(n_bytes: int) -> str:
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n_bytes < 1024:
+            return f'{n_bytes:.1f} {unit}'
+        n_bytes /= 1024
+    return f'{n_bytes:.1f} PB'
