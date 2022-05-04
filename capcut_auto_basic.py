@@ -469,3 +469,11 @@ def human_size(n_bytes: int) -> str:
             return f'{n_bytes:.1f} {unit}'
         n_bytes /= 1024
     return f'{n_bytes:.1f} PB'
+
+
+def human_size(n_bytes: int) -> str:
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n_bytes < 1024:
+            return f'{n_bytes:.1f} {unit}'
+        n_bytes /= 1024
+    return f'{n_bytes:.1f} PB'
