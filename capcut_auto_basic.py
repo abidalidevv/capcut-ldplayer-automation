@@ -490,3 +490,13 @@ def paginate(items: list, page: int, per_page: int) -> dict:
         'total': total,
         'pages': (total + per_page - 1) // per_page,
     }
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    out = base.copy()
+    for k, v in override.items():
+        if k in out and isinstance(out[k], dict) and isinstance(v, dict):
+            out[k] = deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
