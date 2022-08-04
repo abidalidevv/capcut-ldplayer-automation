@@ -509,3 +509,7 @@ def memoize(fn):
             cache[args] = fn(*args)
         return cache[args]
     return wrapper
+
+
+def clamp(value, lo, hi):
+    return max(lo, min(hi, value))
