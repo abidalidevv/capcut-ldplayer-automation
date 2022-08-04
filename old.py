@@ -427,3 +427,15 @@ class SingletonMeta(type):
         if cls not in cls._instances:
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+def retry(fn, attempts: int = 3, delay: float = 1.0):
+    import time
+    last = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except Exception as e:
+            last = e
+            time.sleep(delay)
+    raise last
