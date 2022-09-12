@@ -513,3 +513,7 @@ def memoize(fn):
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
