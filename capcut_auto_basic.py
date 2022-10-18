@@ -524,3 +524,8 @@ def slugify(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r'[^\w\s-]', '', text)
     return re.sub(r'[\s_-]+', '-', text)
+
+
+def chunk_list(lst: list, size: int):
+    for i in range(0, len(lst), size):
+        yield lst[i:i + size]
