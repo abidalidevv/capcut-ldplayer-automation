@@ -533,3 +533,12 @@ def chunk_list(lst: list, size: int):
 
 def format_currency(amount: float, symbol: str = '$') -> str:
     return f'{symbol}{amount:,.2f}'
+
+
+def memoize(fn):
+    cache = {}
+    def wrapper(*args):
+        if args not in cache:
+            cache[args] = fn(*args)
+        return cache[args]
+    return wrapper
