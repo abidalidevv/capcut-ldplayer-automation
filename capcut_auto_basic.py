@@ -529,3 +529,7 @@ def slugify(text: str) -> str:
 def chunk_list(lst: list, size: int):
     for i in range(0, len(lst), size):
         yield lst[i:i + size]
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
