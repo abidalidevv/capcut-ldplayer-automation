@@ -449,3 +449,7 @@ def deep_merge(base: dict, override: dict) -> dict:
         else:
             out[k] = v
     return out
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
