@@ -553,3 +553,9 @@ def write_json(path: str, data: dict, indent: int = 2) -> None:
 def get_env(key: str, default: str = '') -> str:
     import os
     return os.environ.get(key, default)
+
+
+def read_json(path: str) -> dict:
+    import json
+    from pathlib import Path
+    return json.loads(Path(path).read_text(encoding='utf-8'))
