@@ -548,3 +548,8 @@ def write_json(path: str, data: dict, indent: int = 2) -> None:
     import json
     from pathlib import Path
     Path(path).write_text(json.dumps(data, indent=indent, ensure_ascii=False))
+
+
+def get_env(key: str, default: str = '') -> str:
+    import os
+    return os.environ.get(key, default)
