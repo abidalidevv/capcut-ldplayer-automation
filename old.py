@@ -471,3 +471,9 @@ def paginate(items: list, page: int, per_page: int) -> dict:
 def snake_to_camel(name: str) -> str:
     components = name.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def write_json(path: str, data: dict, indent: int = 2) -> None:
+    import json
+    from pathlib import Path
+    Path(path).write_text(json.dumps(data, indent=indent, ensure_ascii=False))
