@@ -466,3 +466,8 @@ def paginate(items: list, page: int, per_page: int) -> dict:
         'total': total,
         'pages': (total + per_page - 1) // per_page,
     }
+
+
+def snake_to_camel(name: str) -> str:
+    components = name.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
