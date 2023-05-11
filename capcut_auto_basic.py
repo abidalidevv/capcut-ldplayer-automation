@@ -573,3 +573,7 @@ def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
     if len(text) <= length:
         return text
     return text[:length - len(suffix)] + suffix
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
