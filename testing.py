@@ -618,3 +618,13 @@ def memoize(fn):
             cache[args] = fn(*args)
         return cache[args]
     return wrapper
+
+
+def flatten(nested: list) -> list:
+    result = []
+    for item in nested:
+        if isinstance(item, list):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
