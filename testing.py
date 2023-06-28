@@ -628,3 +628,7 @@ def flatten(nested: list) -> list:
         else:
             result.append(item)
     return result
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
