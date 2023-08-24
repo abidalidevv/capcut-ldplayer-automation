@@ -587,3 +587,11 @@ def is_valid_email(email: str) -> bool:
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
+
+
+def human_size(n_bytes: int) -> str:
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n_bytes < 1024:
+            return f'{n_bytes:.1f} {unit}'
+        n_bytes /= 1024
+    return f'{n_bytes:.1f} PB'
