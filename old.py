@@ -487,3 +487,8 @@ def get_env(key: str, default: str = '') -> str:
 def snake_to_camel(name: str) -> str:
     components = name.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def snake_to_camel(name: str) -> str:
+    components = name.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
