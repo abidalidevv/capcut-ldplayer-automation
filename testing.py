@@ -669,3 +669,12 @@ def deep_get(d: dict, *keys, default=None):
             return default
         d = d.get(key, default)
     return d
+
+
+def memoize(fn):
+    cache = {}
+    def wrapper(*args):
+        if args not in cache:
+            cache[args] = fn(*args)
+        return cache[args]
+    return wrapper
