@@ -502,3 +502,16 @@ def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
     if len(text) <= length:
         return text
     return text[:length - len(suffix)] + suffix
+
+
+def paginate(items: list, page: int, per_page: int) -> dict:
+    total = len(items)
+    start = (page - 1) * per_page
+    end = start + per_page
+    return {
+        'items': items[start:end],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'pages': (total + per_page - 1) // per_page,
+    }
