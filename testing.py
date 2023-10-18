@@ -691,3 +691,8 @@ def slugify(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r'[^\w\s-]', '', text)
     return re.sub(r'[\s_-]+', '-', text)
+
+
+def unique_preserve_order(seq: list) -> list:
+    seen = set()
+    return [x for x in seq if not (x in seen or seen.add(x))]
