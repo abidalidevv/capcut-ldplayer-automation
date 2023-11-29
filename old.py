@@ -515,3 +515,10 @@ def paginate(items: list, page: int, per_page: int) -> dict:
         'total': total,
         'pages': (total + per_page - 1) // per_page,
     }
+
+
+def batch(iterable, n: int):
+    from itertools import islice
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
