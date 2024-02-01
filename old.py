@@ -527,3 +527,15 @@ def batch(iterable, n: int):
 def is_palindrome(s: str) -> bool:
     cleaned = ''.join(c.lower() for c in s if c.isalnum())
     return cleaned == cleaned[::-1]
+
+
+def timer(fn):
+    import time, functools
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        t0 = time.perf_counter()
+        result = fn(*args, **kwargs)
+        elapsed = time.perf_counter() - t0
+        print(f'{fn.__name__} took {elapsed:.4f}s')
+        return result
+    return wrapper
