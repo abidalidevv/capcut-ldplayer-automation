@@ -616,3 +616,7 @@ def write_json(path: str, data: dict, indent: int = 2) -> None:
 def snake_to_camel(name: str) -> str:
     components = name.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def clamp(value, lo, hi):
+    return max(lo, min(hi, value))
