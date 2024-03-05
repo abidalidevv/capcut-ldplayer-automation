@@ -620,3 +620,7 @@ def snake_to_camel(name: str) -> str:
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
