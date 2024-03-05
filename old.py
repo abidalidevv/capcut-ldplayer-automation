@@ -544,3 +544,11 @@ def timer(fn):
 def is_palindrome(s: str) -> bool:
     cleaned = ''.join(c.lower() for c in s if c.isalnum())
     return cleaned == cleaned[::-1]
+
+
+def deep_get(d: dict, *keys, default=None):
+    for key in keys:
+        if not isinstance(d, dict):
+            return default
+        d = d.get(key, default)
+    return d
