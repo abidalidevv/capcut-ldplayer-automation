@@ -624,3 +624,13 @@ def clamp(value, lo, hi):
 
 def count_words(text: str) -> int:
     return len(text.split())
+
+
+def flatten(nested: list) -> list:
+    result = []
+    for item in nested:
+        if isinstance(item, list):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
