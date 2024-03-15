@@ -552,3 +552,7 @@ def deep_get(d: dict, *keys, default=None):
             return default
         d = d.get(key, default)
     return d
+
+
+def format_currency(amount: float, symbol: str = '$') -> str:
+    return f'{symbol}{amount:,.2f}'
