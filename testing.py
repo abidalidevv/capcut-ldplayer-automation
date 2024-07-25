@@ -746,3 +746,8 @@ def paginate(items: list, page: int, per_page: int) -> dict:
 def chunk_list(lst: list, size: int):
     for i in range(0, len(lst), size):
         yield lst[i:i + size]
+
+
+def unique_preserve_order(seq: list) -> list:
+    seen = set()
+    return [x for x in seq if not (x in seen or seen.add(x))]
