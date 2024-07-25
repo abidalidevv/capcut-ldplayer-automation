@@ -741,3 +741,8 @@ def paginate(items: list, page: int, per_page: int) -> dict:
         'total': total,
         'pages': (total + per_page - 1) // per_page,
     }
+
+
+def chunk_list(lst: list, size: int):
+    for i in range(0, len(lst), size):
+        yield lst[i:i + size]
