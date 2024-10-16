@@ -658,3 +658,10 @@ def is_valid_email(email: str) -> bool:
     import re
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
+
+
+def batch(iterable, n: int):
+    from itertools import islice
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
