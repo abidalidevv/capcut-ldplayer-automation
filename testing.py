@@ -751,3 +751,8 @@ def chunk_list(lst: list, size: int):
 def unique_preserve_order(seq: list) -> list:
     seen = set()
     return [x for x in seq if not (x in seen or seen.add(x))]
+
+
+def is_palindrome(s: str) -> bool:
+    cleaned = ''.join(c.lower() for c in s if c.isalnum())
+    return cleaned == cleaned[::-1]
