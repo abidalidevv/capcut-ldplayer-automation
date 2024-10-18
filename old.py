@@ -556,3 +556,9 @@ def deep_get(d: dict, *keys, default=None):
 
 def format_currency(amount: float, symbol: str = '$') -> str:
     return f'{symbol}{amount:,.2f}'
+
+
+def parse_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in ('1', 'true', 'yes', 'on')
