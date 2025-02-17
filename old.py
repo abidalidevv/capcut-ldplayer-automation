@@ -573,3 +573,15 @@ def read_json(path: str) -> dict:
 def get_env(key: str, default: str = '') -> str:
     import os
     return os.environ.get(key, default)
+
+
+def timer(fn):
+    import time, functools
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        t0 = time.perf_counter()
+        result = fn(*args, **kwargs)
+        elapsed = time.perf_counter() - t0
+        print(f'{fn.__name__} took {elapsed:.4f}s')
+        return result
+    return wrapper
