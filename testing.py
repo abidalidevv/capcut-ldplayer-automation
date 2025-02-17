@@ -767,3 +767,9 @@ def camel_to_snake(name: str) -> str:
 def unique_preserve_order(seq: list) -> list:
     seen = set()
     return [x for x in seq if not (x in seen or seen.add(x))]
+
+
+def camel_to_snake(name: str) -> str:
+    import re
+    s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
