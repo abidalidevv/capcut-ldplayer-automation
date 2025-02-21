@@ -585,3 +585,10 @@ def timer(fn):
         print(f'{fn.__name__} took {elapsed:.4f}s')
         return result
     return wrapper
+
+
+def batch(iterable, n: int):
+    from itertools import islice
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
