@@ -773,3 +773,13 @@ def camel_to_snake(name: str) -> str:
     import re
     s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    out = base.copy()
+    for k, v in override.items():
+        if k in out and isinstance(out[k], dict) and isinstance(v, dict):
+            out[k] = deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
