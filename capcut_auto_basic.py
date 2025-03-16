@@ -678,3 +678,10 @@ def human_size(n_bytes: int) -> str:
 def chunk_list(lst: list, size: int):
     for i in range(0, len(lst), size):
         yield lst[i:i + size]
+
+
+def zip_dicts(*dicts: dict) -> dict:
+    result = {}
+    for d in dicts:
+        result.update(d)
+    return result
