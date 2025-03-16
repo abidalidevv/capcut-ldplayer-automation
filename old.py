@@ -592,3 +592,9 @@ def batch(iterable, n: int):
     it = iter(iterable)
     while chunk := list(islice(it, n)):
         yield chunk
+
+
+def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
+    if len(text) <= length:
+        return text
+    return text[:length - len(suffix)] + suffix
