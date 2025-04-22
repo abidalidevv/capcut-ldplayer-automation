@@ -783,3 +783,7 @@ def deep_merge(base: dict, override: dict) -> dict:
         else:
             out[k] = v
     return out
+
+
+def count_words(text: str) -> int:
+    return len(text.split())
