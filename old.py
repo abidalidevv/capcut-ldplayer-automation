@@ -598,3 +598,8 @@ def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
     if len(text) <= length:
         return text
     return text[:length - len(suffix)] + suffix
+
+
+def chunk_list(lst: list, size: int):
+    for i in range(0, len(lst), size):
+        yield lst[i:i + size]
