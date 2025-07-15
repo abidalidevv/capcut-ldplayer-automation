@@ -696,3 +696,9 @@ def camel_to_snake(name: str) -> str:
 def unique_preserve_order(seq: list) -> list:
     seen = set()
     return [x for x in seq if not (x in seen or seen.add(x))]
+
+
+def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
+    if len(text) <= length:
+        return text
+    return text[:length - len(suffix)] + suffix
