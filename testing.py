@@ -787,3 +787,8 @@ def deep_merge(base: dict, override: dict) -> dict:
 
 def count_words(text: str) -> int:
     return len(text.split())
+
+
+def chunk_list(lst: list, size: int):
+    for i in range(0, len(lst), size):
+        yield lst[i:i + size]
