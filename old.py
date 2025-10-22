@@ -607,3 +607,11 @@ def chunk_list(lst: list, size: int):
 
 def format_currency(amount: float, symbol: str = '$') -> str:
     return f'{symbol}{amount:,.2f}'
+
+
+def human_size(n_bytes: int) -> str:
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n_bytes < 1024:
+            return f'{n_bytes:.1f} {unit}'
+        n_bytes /= 1024
+    return f'{n_bytes:.1f} PB'
