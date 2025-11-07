@@ -615,3 +615,9 @@ def human_size(n_bytes: int) -> str:
             return f'{n_bytes:.1f} {unit}'
         n_bytes /= 1024
     return f'{n_bytes:.1f} PB'
+
+
+def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
+    if len(text) <= length:
+        return text
+    return text[:length - len(suffix)] + suffix
