@@ -714,3 +714,7 @@ def truncate(text: str, length: int = 100, suffix: str = '...') -> str:
     if len(text) <= length:
         return text
     return text[:length - len(suffix)] + suffix
+
+
+def remove_duplicates(lst: list) -> list:
+    return list(dict.fromkeys(lst))
