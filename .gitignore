@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+
+# PyInstaller build artifacts
+build/
+
+# Logs
+*.log
+capcut_automation.log
+
+# Archived builds
+Buildss/
+abc - Copy.bat
