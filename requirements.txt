@@ -1,0 +1,5 @@
+# CapCut Automation Bot
+# Core runtime has ZERO external dependencies (uses standard Python 3.10+ library: tkinter, urllib, socket, threading, subprocess)
+
+# Optional packaging dependencies for building standalone Windows EXE:
+pyinstaller>=6.0.0

@@ -41,8 +41,19 @@ from tkinter import ttk
 
 # ==================== DIRECTORY & EXECUTABLE DETECTION ====================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOCAL_ADB = os.path.join(SCRIPT_DIR, "adb.exe")
-ADB_BIN = LOCAL_ADB if os.path.exists(LOCAL_ADB) else "adb"
+TOOLS_DIR = os.path.join(SCRIPT_DIR, "tools")
+
+# Ensure tools/ directory is in PATH for any subprocess or ADB DLL loading
+if os.path.exists(TOOLS_DIR) and TOOLS_DIR not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = TOOLS_DIR + os.pathsep + os.environ.get("PATH", "")
+
+# Search order: tools/adb.exe -> root adb.exe -> system PATH 'adb'
+if os.path.exists(os.path.join(TOOLS_DIR, "adb.exe")):
+    ADB_BIN = os.path.join(TOOLS_DIR, "adb.exe")
+elif os.path.exists(os.path.join(SCRIPT_DIR, "adb.exe")):
+    ADB_BIN = os.path.join(SCRIPT_DIR, "adb.exe")
+else:
+    ADB_BIN = "adb"
 
 # ==================== CONFIG & DEFAULTS ====================
 DEFAULT_DEVICE_ID = "emulator-5554"

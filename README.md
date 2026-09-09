@@ -116,17 +116,19 @@ Z-Build.bat
 ├── capcut_gui.py               # Main application source code
 ├── CapcutAuto.exe              # Standalone compiled Windows executable
 ├── README.md                   # Project documentation
+├── requirements.txt           # Dependency declaration
 ├── Z-Build.bat                 # PyInstaller one-click build script
 ├── Z-run.bat                   # Launcher script
 ├── abc.bat                     # Device helper utility (Reboot, ADB devices)
 ├── proxy.txt                   # Sample proxy list format
 ├── test_proxies.txt            # Downloaded test proxy pool
-├── adb.exe & DLLs              # Bundled Android Platform Tools
 ├── icon.png                    # Application icon
+├── tools/                      # Bundled Android Platform Tools (adb.exe & DLLs)
 ├── docs/                       # Comprehensive guides & documentation
 │   ├── DOCUMENTATION.md        # Detailed usage & configuration guide
 │   └── PROJECT_SUMMARY.md      # Technical architecture documentation
-└── archive/                    # Archived scripts and previous backups
+└── archive/                    # Archived scripts and previous builds
+    └── builds/                 # Historical build binaries
 ```
 
 ---

@@ -1,5 +1,6 @@
 @echo off
 title Android Phone Control
+set "PATH=%~dp0tools;%PATH%"
 
 echo ==============================
 echo       ANDROID PHONE CONTROL

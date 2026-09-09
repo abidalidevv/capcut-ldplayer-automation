@@ -7,10 +7,11 @@ __pycache__/
 # PyInstaller build artifacts
 build/
 
-# Logs
+# Runtime logs & user configs
 *.log
 capcut_automation.log
+config.json
 
 # Archived builds
+archive/builds/
 Buildss/
-abc - Copy.bat
