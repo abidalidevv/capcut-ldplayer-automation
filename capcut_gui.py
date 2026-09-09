@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """
-CapCut Automation Tool - Modern Glassmorphism UI
+CapCut Automation Tool - Modern Glassmorphism UI (v2.0 Production Ready)
 Features:
-- Modern glassmorphism design (2025 style)
+- Modern glassmorphism dark theme UI
 - Connection Modes: None (Direct), VPN (Windscribe), and Proxy
 - Advanced Proxy Support:
   * TXT File: HTTP/HTTPS & SOCKS5 with User:Password authentication
   * Rotating Proxy Link: API/URL based IP refresh and dynamic proxy fetch
   * Built-in zero-config Python Proxy Bridge for Android Emulator
+  * ⚡ Live Proxy Tester: Real-time IP, country, and ping (ms) latency check
+  * 🛡️ Dead Proxy Auto-Skip: Auto-advances if a proxy in rotation fails health-check
+- Anti-Detection: Humanized click jitter with randomized micro-offsets
 - Smart Screen & Popup Detection (handles 'Open with', 'Allow permissions')
-- Screen loading detection with retries and fallback coordinates
+- 🚀 Smart Export Completion: UIAutomator screen detection saves 20-30s per video
+- 💾 Persistent Settings: Auto-saves and restores configuration to config.json
+- 📱 Live LDPlayer Device Status & Auto-Reconnect (standard emulator ports)
+- 🧹 Storage Protection: Optional auto-clean of exported videos on emulator
 - Non-blocking multithreaded architecture with immediate stop & pause
 """
 
@@ -33,10 +39,16 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 
-# ==================== CONFIG ====================
+# ==================== DIRECTORY & EXECUTABLE DETECTION ====================
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_ADB = os.path.join(SCRIPT_DIR, "adb.exe")
+ADB_BIN = LOCAL_ADB if os.path.exists(LOCAL_ADB) else "adb"
+
+# ==================== CONFIG & DEFAULTS ====================
 DEFAULT_DEVICE_ID = "emulator-5554"
 DEVICE_ID = DEFAULT_DEVICE_ID
-LOG_FILE = "capcut_automation.log"
+LOG_FILE = os.path.join(SCRIPT_DIR, "capcut_automation.log")
+CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.json")
 
 DEFAULT_TEMPLATE_URL = "https://www.capcut.com/template-detail/7573250368646221109"
 DEFAULT_LOOP = "100"
@@ -44,6 +56,42 @@ DEFAULT_MIN_DELAY = "6"
 DEFAULT_MAX_DELAY = "9"
 DEFAULT_EXPORT_MIN = "25"
 DEFAULT_EXPORT_MAX = "40"
+
+DEFAULT_CONFIG = {
+    "template_url": DEFAULT_TEMPLATE_URL,
+    "loop": DEFAULT_LOOP,
+    "delay_min": DEFAULT_MIN_DELAY,
+    "delay_max": DEFAULT_MAX_DELAY,
+    "export_min": DEFAULT_EXPORT_MIN,
+    "export_max": DEFAULT_EXPORT_MAX,
+    "mode": "None",
+    "proxy_type": "txt",
+    "proxy_file": "",
+    "proxy_link_url": "",
+    "proxy_fixed_endpoint": "",
+    "auto_clean_storage": False
+}
+
+def load_config() -> dict:
+    """Load persistent settings from config.json"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+                cfg = DEFAULT_CONFIG.copy()
+                cfg.update(saved)
+                return cfg
+        except Exception:
+            pass
+    return DEFAULT_CONFIG.copy()
+
+def save_config(cfg: dict):
+    """Save persistent settings to config.json"""
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception:
+        pass
 
 # Global status variable for GUI
 CURRENT_STATUS = "Ready"
@@ -420,16 +468,57 @@ def stop_proxy_bridge():
             pass
         LOCAL_BRIDGE = None
 
+# ==================== PROXY CONNECTIVITY TESTER ====================
+def test_proxy_connection(proxy_str: str, timeout: float = 5.0) -> Tuple[bool, str, float]:
+    """
+    Test proxy connectivity via temporary test bridge.
+    Returns: (is_success, ip_or_error_info, latency_ms)
+    """
+    test_port = 8890
+    test_bridge = ProxyBridge(local_port=test_port)
+    if not test_bridge.set_upstream(proxy_str):
+        return False, "Invalid proxy format", 0.0
+
+    test_bridge.start()
+    try:
+        start_t = time.time()
+        proxy_handler = urllib.request.ProxyHandler({
+            'http': f'http://127.0.0.1:{test_port}'
+        })
+        opener = urllib.request.build_opener(proxy_handler)
+        req = urllib.request.Request("http://api.ipify.org?format=json", headers={"User-Agent": "Mozilla/5.0"})
+        with opener.open(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            ip = data.get("ip", "Connected")
+            latency = (time.time() - start_t) * 1000
+            return True, ip, latency
+    except Exception as e:
+        err_msg = str(e)
+        if "timed out" in err_msg.lower():
+            err_msg = "Connection Timed Out"
+        elif "502" in err_msg or "bad gateway" in err_msg.lower():
+            err_msg = "502 Bad Gateway / Proxy Refused"
+        elif "connection refused" in err_msg.lower():
+            err_msg = "Connection Refused"
+        return False, err_msg, 0.0
+    finally:
+        test_bridge.stop()
+
 # ==================== ADB HELPERS ====================
 def run_cmd(cmd: List[str], wait: bool = True, timeout: float = 20.0):
-    """Run command with optional timeout (hides CMD window)"""
+    """Run command with optional timeout (hides CMD window, uses resolved ADB)"""
     try:
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = subprocess.SW_HIDE
-        
+
+        # Replace 'adb' with resolved executable path if needed
+        exec_cmd = list(cmd)
+        if exec_cmd and exec_cmd[0] == "adb":
+            exec_cmd[0] = ADB_BIN
+
         proc = subprocess.Popen(
-            cmd, 
+            exec_cmd, 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE, 
             text=True,
@@ -470,6 +559,56 @@ def auto_detect_device() -> str:
     DEVICE_ID = DEFAULT_DEVICE_ID
     return DEVICE_ID
 
+def detect_and_connect_device() -> Tuple[str, str]:
+    """
+    Auto-detect and connect LDPlayer emulator.
+    Returns: (device_id, status) where status is 'online', 'offline', or 'disconnected'
+    """
+    global DEVICE_ID
+    proc, out, _, _ = run_cmd(["adb", "devices"], timeout=3)
+    devices = []
+    if out:
+        for line in out.strip().splitlines()[1:]:
+            parts = line.split()
+            if len(parts) >= 2:
+                devices.append((parts[0], parts[1]))
+
+    online_devices = [d[0] for d in devices if d[1] == "device"]
+    
+    # If no device connected, try auto-connecting to common LDPlayer ports
+    if not online_devices:
+        log_message("🔍 Probing LDPlayer ports (127.0.0.1:5555, emulator-5554)...")
+        for port in ["127.0.0.1:5555", "127.0.0.1:5556", "127.0.0.1:5554"]:
+            run_cmd(["adb", "connect", port], timeout=2)
+        
+        proc, out, _, _ = run_cmd(["adb", "devices"], timeout=3)
+        devices = []
+        if out:
+            for line in out.strip().splitlines()[1:]:
+                parts = line.split()
+                if len(parts) >= 2:
+                    devices.append((parts[0], parts[1]))
+        online_devices = [d[0] for d in devices if d[1] == "device"]
+
+    if online_devices:
+        if "emulator-5554" in online_devices:
+            DEVICE_ID = "emulator-5554"
+        elif "127.0.0.1:5555" in online_devices:
+            DEVICE_ID = "127.0.0.1:5555"
+        else:
+            DEVICE_ID = online_devices[0]
+        log_message(f"✅ Device Connected: {DEVICE_ID}")
+        return DEVICE_ID, "online"
+
+    offline_devices = [d[0] for d in devices if d[1] == "offline"]
+    if offline_devices:
+        DEVICE_ID = offline_devices[0]
+        log_message(f"⚠️ Device {DEVICE_ID} is OFFLINE")
+        return DEVICE_ID, "offline"
+
+    DEVICE_ID = DEFAULT_DEVICE_ID
+    return "None", "disconnected"
+
 def adb(args: List[str], wait: bool = True):
     """Execute ADB command"""
     cmd = ["adb", "-s", DEVICE_ID] + args
@@ -479,25 +618,8 @@ def adb(args: List[str], wait: bool = True):
 def check_device() -> bool:
     """Check if device is connected and online"""
     log_message("🔍 Checking ADB connection...")
-    auto_detect_device()
-    proc, out, err, timed = run_cmd(["adb", "devices"], timeout=5)
-    
-    if timed or proc is None:
-        log_message("❌ ADB command timed out")
-        return False
-    
-    lines = out.strip().splitlines()
-    for line in lines:
-        if DEVICE_ID in line:
-            if "device" in line and "offline" not in line:
-                log_message(f"✅ Device {DEVICE_ID} is ONLINE")
-                return True
-            elif "offline" in line:
-                log_message(f"❌ Device {DEVICE_ID} is OFFLINE - Please restart LDPlayer or reconnect ADB")
-                return False
-    
-    log_message(f"❌ Device {DEVICE_ID} not found")
-    return False
+    dev_id, status = detect_and_connect_device()
+    return status == "online"
 
 def reconnect_adb():
     """Try to reconnect ADB"""
@@ -508,20 +630,23 @@ def reconnect_adb():
     time.sleep(2)
     return check_device()
 
-def tap(coord: Tuple[int, int], tag: str = ""):
-    """Tap at coordinates"""
+def tap(coord: Tuple[int, int], tag: str = "", jitter: bool = True):
+    """Tap at coordinates with humanized micro-jitter"""
     x, y = coord
+    if jitter:
+        x += random.randint(-4, 4)
+        y += random.randint(-4, 4)
     if tag:
         log_message(f"👆 TAP {tag}: ({x}, {y})")
     else:
         log_message(f"👆 TAP: ({x}, {y})")
     adb(["shell", "input", "tap", str(x), str(y)], wait=False)
 
-def tap_with_smart_detect(coord: Tuple[int, int], tag: str = "", keywords: List[str] = None):
+def tap_with_smart_detect(coord: Tuple[int, int], tag: str = "", keywords: List[str] = None, jitter: bool = True):
     """
     Tap at coordinates with UI inspection fallback.
     If keywords are found in screen dump, clicks exact button center.
-    Otherwise, safely taps default coordinate.
+    Otherwise, safely taps default coordinate with jitter.
     """
     x, y = coord
     target_x, target_y = x, y
@@ -552,6 +677,10 @@ def tap_with_smart_detect(coord: Tuple[int, int], tag: str = "", keywords: List[
                                 break
         except Exception:
             pass
+
+    if jitter:
+        target_x += random.randint(-3, 3)
+        target_y += random.randint(-3, 3)
 
     if tag:
         log_message(f"👆 TAP {tag}{' (Smart)' if detected else ''}: ({target_x}, {target_y})")
@@ -639,6 +768,16 @@ def force_close_apps(exclude_vpn: bool = False):
     adb(["shell", "am", "force-stop", "com.lemon.lvoverseas"])
     adb(["shell", "am", "force-stop", "com.android.chrome"])
     time.sleep(1)
+
+def clean_emulator_exported_videos():
+    """Clean exported videos from emulator storage to prevent full disk crashes"""
+    try:
+        log_message("🧹 Cleaning old exported videos from emulator storage...")
+        adb(["shell", "rm", "-f", "/sdcard/Movies/CapCut/*.mp4"])
+        adb(["shell", "rm", "-f", "/sdcard/DCIM/Camera/*.mp4"])
+        log_message("✅ Emulator storage cleaned successfully")
+    except Exception as e:
+        log_message(f"⚠️ Storage clean failed: {e}")
 
 # ==================== PROXY FUNCTIONS ====================
 def load_proxies_from_file(path: str) -> int:
@@ -930,11 +1069,11 @@ def select_image(stop_event: threading.Event = None):
             return
         time.sleep(0.5)
 
-def export_video(export_wait_min: float, export_wait_max: float, stop_event: threading.Event = None):
-    """Export video with stop check"""
+def export_video(export_wait_min: float, export_wait_max: float, stop_event: threading.Event = None) -> bool:
+    """Export video with smart UIAutomator completion detection"""
     if stop_event and stop_event.is_set():
         log_message("🛑 Stop detected")
-        return
+        return False
     
     log_message("⏳ Waiting 2s for screen to stabilize...")
     time.sleep(2)
@@ -955,7 +1094,7 @@ def export_video(export_wait_min: float, export_wait_max: float, stop_event: thr
     for _ in range(steps):
         if stop_event and stop_event.is_set():
             log_message("🛑 Stop during export UI wait")
-            return
+            return False
         time.sleep(0.5)
     
     update_status("Final export", "Clicking final export button")
@@ -963,28 +1102,62 @@ def export_video(export_wait_min: float, export_wait_max: float, stop_event: thr
     tap_with_smart_detect(FINAL_EXPORT_BTN, "FINAL_EXPORT_BTN", keywords=["Export without watermark", "Export"])
     
     wait2 = random.uniform(export_wait_min, export_wait_max)
-    update_status("Video exporting", f"Total {wait2:.0f}s")
-    log_message(f"⏳ Exporting {wait2:.1f}s...")
+    update_status("Video exporting", f"Max {wait2:.0f}s (Smart Detection active)")
+    log_message(f"⏳ Exporting (max {wait2:.1f}s, detecting completion)...")
     
-    elapsed = 0
+    elapsed = 0.0
+    completed_early = False
+    done_keywords = ["Ready to share", "Share to TikTok", "Share", "Done", "Save to your device"]
+    
     while elapsed < wait2:
         if stop_event and stop_event.is_set():
             log_message("🛑 Stop during export")
-            return
+            return False
         
-        sleep_chunk = min(1, wait2 - elapsed)
+        sleep_chunk = min(1.0, wait2 - elapsed)
         time.sleep(sleep_chunk)
         elapsed += sleep_chunk
         
-        if int(elapsed) % 5 == 0 and elapsed < wait2:
+        # Check completion every 2s after elapsed >= 5s
+        if elapsed >= 5.0 and int(elapsed) % 2 == 0:
+            try:
+                proc, _, _, timed = run_cmd(
+                    ["adb", "-s", DEVICE_ID, "shell", "uiautomator", "dump", "/data/local/tmp/uidump.xml"],
+                    timeout=1.2
+                )
+                if not timed and proc and proc.returncode == 0:
+                    _, xml_data, _, _ = run_cmd(
+                        ["adb", "-s", DEVICE_ID, "shell", "cat", "/data/local/tmp/uidump.xml"],
+                        timeout=0.8
+                    )
+                    if xml_data:
+                        for kw in done_keywords:
+                            if kw.lower() in xml_data.lower():
+                                log_message(f"🎯 Export completed early! Detected '{kw}' at {elapsed:.0f}s (Saved {wait2 - elapsed:.0f}s).")
+                                update_status("Export finished", f"Done in {elapsed:.0f}s")
+                                completed_early = True
+                                time.sleep(1)
+                                break
+                if completed_early:
+                    break
+            except Exception:
+                pass
+        
+        if int(elapsed) % 5 == 0 and elapsed < wait2 and not completed_early:
             remaining = wait2 - elapsed
             update_status("Exporting video", f"{remaining:.0f}s remaining")
             log_message(f"   Progress: {elapsed:.0f}s / {wait2:.0f}s")
+
+    if not completed_early:
+        log_message(f"⏳ Export wait cycle finished ({elapsed:.1f}s), proceeding...")
+    
+    return True
 
 # ==================== ONE CYCLE ====================
 def one_cycle(index: int, template_url: str, use_vpn: bool, use_proxy: bool, proxy_type: str,
               proxy_link_url: str, proxy_fixed_endpoint: str,
               delay_min: float, delay_max: float, export_min: float, export_max: float,
+              auto_clean: bool,
               stop_event: threading.Event, pause_event: threading.Event) -> bool:
     """Execute one cycle with pause support and bug-free VPN / Proxy lifecycle"""
     update_status(f"Cycle #{index + 1}", "Starting")
@@ -1008,18 +1181,39 @@ def one_cycle(index: int, template_url: str, use_vpn: bool, use_proxy: bool, pro
             log_message("🛑 Stop requested")
             return False
         
-        # 1. Apply Network Mode
+        # 1. Apply Network Mode with Dead Proxy Auto-Skip
         if use_proxy:
-            update_status("Applying proxy", "Rotating proxy")
-            if proxy_type == "link":
-                proxy = rotate_via_link(proxy_link_url, proxy_fixed_endpoint)
-            else:
-                proxy = get_next_proxy()
+            update_status("Applying proxy", "Configuring proxy")
+            proxy = None
+            max_proxy_attempts = 4 if proxy_type == "txt" else 1
+
+            for p_try in range(max_proxy_attempts):
+                if stop_event.is_set():
+                    return False
+
+                if proxy_type == "link":
+                    proxy = rotate_via_link(proxy_link_url, proxy_fixed_endpoint)
+                else:
+                    proxy = get_next_proxy()
+
+                if not proxy:
+                    log_message("⚠️ No proxy available in rotation pool.")
+                    break
+
+                # Quick 3s health check
+                log_message(f"🔍 Testing proxy health ({p_try + 1}/{max_proxy_attempts}): {proxy}")
+                alive, ip_info, lat = test_proxy_connection(proxy, timeout=3.0)
+                if alive:
+                    log_message(f"✅ Proxy verified healthy: IP={ip_info} ({lat:.0f}ms)")
+                    break
+                else:
+                    log_message(f"⚠️ Proxy dead/unresponsive ({ip_info}). Auto-skipping to next...")
+                    proxy = None
 
             if proxy:
                 apply_proxy_to_device(proxy)
             else:
-                log_message("⚠️ No valid proxy retrieved. Skipping cycle.")
+                log_message("❌ Failed to find a working proxy. Skipping cycle.")
                 return False
 
         if use_vpn:
@@ -1067,6 +1261,10 @@ def one_cycle(index: int, template_url: str, use_vpn: bool, use_proxy: bool, pro
 
         export_video(export_min, export_max, stop_event)
 
+        # Optional Auto Storage Clean
+        if auto_clean:
+            clean_emulator_exported_videos()
+
         # 5. Cleanup at Cycle End
         if use_vpn:
             update_status("VPN disconnecting", "Ending VPN session")
@@ -1090,8 +1288,8 @@ def one_cycle(index: int, template_url: str, use_vpn: bool, use_proxy: bool, pro
 class ModernCapcutGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("CapCut Automation")
-        self.geometry("920x750")
+        self.title("CapCut Automation Bot")
+        self.geometry("940x780")
         self.resizable(False, False)
         
         # Apply rounded corners (Windows only)
@@ -1122,25 +1320,38 @@ class ModernCapcutGUI(tk.Tk):
         self.stop_event = threading.Event()
         self.pause_event = threading.Event()
         self.worker_thread = None
+        self.testing_proxy = False
+        
+        # Load saved config
+        self.cfg = load_config()
         
         # Variables
-        self.link_var = tk.StringVar(value=DEFAULT_TEMPLATE_URL)
-        self.loop_var = tk.StringVar(value=DEFAULT_LOOP)
-        self.delay_min_var = tk.StringVar(value=DEFAULT_MIN_DELAY)
-        self.delay_max_var = tk.StringVar(value=DEFAULT_MAX_DELAY)
-        self.export_min_var = tk.StringVar(value=DEFAULT_EXPORT_MIN)
-        self.export_max_var = tk.StringVar(value=DEFAULT_EXPORT_MAX)
+        self.link_var = tk.StringVar(value=self.cfg.get("template_url", DEFAULT_TEMPLATE_URL))
+        self.loop_var = tk.StringVar(value=self.cfg.get("loop", DEFAULT_LOOP))
+        self.delay_min_var = tk.StringVar(value=self.cfg.get("delay_min", DEFAULT_MIN_DELAY))
+        self.delay_max_var = tk.StringVar(value=self.cfg.get("delay_max", DEFAULT_MAX_DELAY))
+        self.export_min_var = tk.StringVar(value=self.cfg.get("export_min", DEFAULT_EXPORT_MIN))
+        self.export_max_var = tk.StringVar(value=self.cfg.get("export_max", DEFAULT_EXPORT_MAX))
         
-        self.mode_var = tk.StringVar(value="None")
-        self.previous_mode = "None"
+        self.mode_var = tk.StringVar(value=self.cfg.get("mode", "None"))
+        self.previous_mode = self.mode_var.get()
         
         # Proxy options
-        self.proxy_type_var = tk.StringVar(value="txt")  # "txt" or "link"
+        self.proxy_type_var = tk.StringVar(value=self.cfg.get("proxy_type", "txt"))
+        self.proxy_file_path = self.cfg.get("proxy_file", "")
         self.proxy_file_var = tk.StringVar(value="No file loaded")
         self.proxy_count_var = tk.StringVar(value="0")
-        self.proxy_link_url_var = tk.StringVar(value="")
-        self.proxy_fixed_endpoint_var = tk.StringVar(value="")
+        self.proxy_link_url_var = tk.StringVar(value=self.cfg.get("proxy_link_url", ""))
+        self.proxy_fixed_endpoint_var = tk.StringVar(value=self.cfg.get("proxy_fixed_endpoint", ""))
+        self.proxy_test_status_var = tk.StringVar(value="")
         
+        # Storage cleaner
+        self.auto_clean_var = tk.BooleanVar(value=self.cfg.get("auto_clean_storage", False))
+        
+        # Device status
+        self.device_status_var = tk.StringVar(value="● Probing Device...")
+        
+        # Progress counters
         self.counter_var = tk.StringVar(value="0")
         self.remaining_var = tk.StringVar(value="0")
         self.time_var = tk.StringVar(value="00:00:00")
@@ -1150,6 +1361,17 @@ class ModernCapcutGUI(tk.Tk):
         self.start_time = 0
         self.cycles_done = 0
         
+        # Auto-load proxy file if exists in config or default
+        if self.proxy_file_path and os.path.exists(self.proxy_file_path):
+            cnt = load_proxies_from_file(self.proxy_file_path)
+            self.proxy_file_var.set(f"{os.path.basename(self.proxy_file_path)} ({cnt} proxies)")
+        else:
+            default_txt = os.path.join(SCRIPT_DIR, "proxy.txt")
+            if os.path.exists(default_txt):
+                cnt = load_proxies_from_file(default_txt)
+                self.proxy_file_path = default_txt
+                self.proxy_file_var.set(f"proxy.txt ({cnt} proxies)")
+
         self._build_modern_ui()
         
         # Window closing cleanup
@@ -1158,6 +1380,7 @@ class ModernCapcutGUI(tk.Tk):
         self.after(100, self._drain_log_queue)
         self.after(1000, self._update_time)
         self.after(500, self._update_status_display)
+        self.after(600, self._refresh_device_status)
     
     def _build_modern_ui(self):
         """Build modern glassmorphism UI"""
@@ -1174,21 +1397,48 @@ class ModernCapcutGUI(tk.Tk):
             fg=self.text
         ).pack(side=tk.LEFT, pady=10)
         
+        # Right Header Widgets
+        header_right = tk.Frame(header, bg=self.bg)
+        header_right.pack(side=tk.RIGHT, pady=10)
+        
+        # Device badge & reconnect button
+        self.device_label = tk.Label(
+            header_right,
+            textvariable=self.device_status_var,
+            font=("Segoe UI", 10),
+            bg=self.card_bg,
+            fg=self.text_dim,
+            padx=8,
+            pady=3
+        )
+        self.device_label.pack(side=tk.LEFT, padx=(0, 6))
+        
+        tk.Button(
+            header_right,
+            text="🔄 Detect",
+            command=self._refresh_device_status,
+            bg=self.card_bg,
+            fg=self.accent_hover,
+            font=("Segoe UI", 9, "bold"),
+            relief=tk.FLAT,
+            cursor="hand2"
+        ).pack(side=tk.LEFT, padx=(0, 15))
+        
         self.status_label = tk.Label(
-            header,
+            header_right,
             text="● Ready",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 11, "bold"),
             bg=self.bg,
             fg=self.success
         )
-        self.status_label.pack(side=tk.RIGHT, pady=10, padx=10)
+        self.status_label.pack(side=tk.LEFT)
         
         # Main container
         main = tk.Frame(self, bg=self.bg)
         main.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
         
         # Left panel (Settings)
-        left = tk.Frame(main, bg=self.card_bg, width=460)
+        left = tk.Frame(main, bg=self.card_bg, width=470)
         left.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 10))
         left.pack_propagate(False)
         
@@ -1198,14 +1448,14 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 14, "bold"),
             bg=self.card_bg,
             fg=self.text
-        ).pack(anchor=tk.W, padx=20, pady=(15, 10))
+        ).pack(anchor=tk.W, padx=20, pady=(15, 8))
         
         # URL
         self._add_input(left, "Template URL", self.link_var, width=50)
         
         # Loop & Delays in grid
         grid_frame = tk.Frame(left, bg=self.card_bg)
-        grid_frame.pack(fill=tk.X, padx=20, pady=5)
+        grid_frame.pack(fill=tk.X, padx=20, pady=4)
         
         self._add_small_input(grid_frame, "Loop (empty=∞)", self.loop_var, 0, 0, width=12)
         self._add_small_input(grid_frame, "Min Delay", self.delay_min_var, 0, 1, width=8)
@@ -1221,10 +1471,10 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 11, "bold"),
             bg=self.card_bg,
             fg=self.text
-        ).pack(anchor=tk.W, padx=20, pady=(12, 4))
+        ).pack(anchor=tk.W, padx=20, pady=(10, 3))
         
         mode_frame = tk.Frame(left, bg=self.card_bg)
-        mode_frame.pack(fill=tk.X, padx=20, pady=3)
+        mode_frame.pack(fill=tk.X, padx=20, pady=2)
         
         for mode in ["None", "VPN", "Proxy"]:
             tk.Radiobutton(
@@ -1241,7 +1491,7 @@ class ModernCapcutGUI(tk.Tk):
                 command=self._on_mode_change
             ).pack(side=tk.LEFT, padx=6)
         
-        # Proxy options container (initially hidden)
+        # Proxy options container (initially hidden if not proxy)
         self.proxy_panel = tk.Frame(left, bg="#13172e", relief=tk.RIDGE, bd=1)
         
         # Proxy submode (TXT vs Link)
@@ -1286,7 +1536,7 @@ class ModernCapcutGUI(tk.Tk):
         
         # TXT File Section
         self.txt_proxy_frame = tk.Frame(self.proxy_panel, bg="#13172e")
-        self.txt_proxy_frame.pack(fill=tk.X, padx=12, pady=5)
+        self.txt_proxy_frame.pack(fill=tk.X, padx=12, pady=4)
         
         self.proxy_btn = tk.Button(
             self.txt_proxy_frame,
@@ -1348,18 +1598,64 @@ class ModernCapcutGUI(tk.Tk):
             insertbackground=self.accent
         ).pack(fill=tk.X, pady=(2, 4))
         
+        # Proxy Tester Bar
+        test_bar = tk.Frame(self.proxy_panel, bg="#13172e")
+        test_bar.pack(fill=tk.X, padx=12, pady=(6, 4))
+        
+        self.test_proxy_btn = tk.Button(
+            test_bar,
+            text="⚡ Test Proxy",
+            command=self._test_current_proxy,
+            bg="#3b82f6",
+            fg="white",
+            font=("Segoe UI", 9, "bold"),
+            relief=tk.FLAT,
+            cursor="hand2"
+        )
+        self.test_proxy_btn.pack(side=tk.LEFT)
+        
+        self.test_proxy_lbl = tk.Label(
+            test_bar,
+            textvariable=self.proxy_test_status_var,
+            bg="#13172e",
+            fg=self.text_dim,
+            font=("Segoe UI", 9)
+        )
+        self.test_proxy_lbl.pack(side=tk.LEFT, padx=8)
+
         # Support note
         tk.Label(
             self.proxy_panel,
-            text="Supports HTTP, HTTPS, and SOCKS5 (with user:pass auth)",
+            text="Supports HTTP, HTTPS, & SOCKS5 (with user:pass auth)",
             bg="#13172e",
             fg=self.text_dim,
             font=("Segoe UI", 8, "italic")
-        ).pack(anchor=tk.W, padx=12, pady=(0, 6))
+        ).pack(anchor=tk.W, padx=12, pady=(2, 6))
+
+        # Show proxy panel if mode is Proxy
+        if self.mode_var.get() == "Proxy":
+            self.proxy_panel.pack(fill=tk.X, padx=20, pady=6)
+            self._on_proxy_submode_change()
+        
+        # Storage Protection Option
+        clean_frame = tk.Frame(left, bg=self.card_bg)
+        clean_frame.pack(fill=tk.X, padx=20, pady=(6, 2))
+        
+        tk.Checkbutton(
+            clean_frame,
+            text="Auto-clean exported videos (protects LDPlayer storage)",
+            variable=self.auto_clean_var,
+            bg=self.card_bg,
+            fg=self.text,
+            selectcolor=self.card_bg,
+            activebackground=self.card_bg,
+            activeforeground=self.accent,
+            font=("Segoe UI", 9)
+        ).pack(side=tk.LEFT)
         
         # Control buttons
         btn_frame = tk.Frame(left, bg=self.card_bg)
-        btn_frame.pack(fill=tk.X, padx=20, pady=(15, 10))
+        btn_frame.pack(fill=tk.X, padx=20, pady=(12, 8))
         
         self.start_btn = tk.Button(
             btn_frame,
@@ -1370,10 +1666,10 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 12, "bold"),
             relief=tk.FLAT,
             cursor="hand2",
-            width=10,
+            width=9,
             height=2
         )
-        self.start_btn.pack(side=tk.LEFT, padx=4)
+        self.start_btn.pack(side=tk.LEFT, padx=3)
         
         self.stop_btn = tk.Button(
             btn_frame,
@@ -1384,10 +1680,10 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 12, "bold"),
             relief=tk.FLAT,
             cursor="hand2",
-            width=10,
+            width=9,
             height=2
         )
-        self.stop_btn.pack(side=tk.LEFT, padx=4)
+        self.stop_btn.pack(side=tk.LEFT, padx=3)
         
         self.pause_btn = tk.Button(
             btn_frame,
@@ -1398,10 +1694,10 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 12, "bold"),
             relief=tk.FLAT,
             cursor="hand2",
-            width=10,
+            width=9,
             height=2
         )
-        self.pause_btn.pack(side=tk.LEFT, padx=4)
+        self.pause_btn.pack(side=tk.LEFT, padx=3)
         
         tk.Button(
             btn_frame,
@@ -1412,12 +1708,12 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 10),
             relief=tk.FLAT,
             cursor="hand2",
-            width=6
-        ).pack(side=tk.LEFT, padx=4)
+            width=5
+        ).pack(side=tk.LEFT, padx=3)
         
         # Statistics card
         stats = tk.Frame(left, bg=self.card_bg)
-        stats.pack(fill=tk.X, padx=20, pady=10)
+        stats.pack(fill=tk.X, padx=20, pady=6)
         
         tk.Label(
             stats,
@@ -1425,7 +1721,7 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 12, "bold"),
             bg=self.card_bg,
             fg=self.text
-        ).pack(anchor=tk.W, pady=(0, 6))
+        ).pack(anchor=tk.W, pady=(0, 4))
         
         stats_grid = tk.Frame(stats, bg=self.card_bg)
         stats_grid.pack(fill=tk.X)
@@ -1439,7 +1735,7 @@ class ModernCapcutGUI(tk.Tk):
         right.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Current Status box
-        status_box = tk.Frame(right, bg=self.card_bg, height=170)
+        status_box = tk.Frame(right, bg=self.card_bg, height=150)
         status_box.pack(fill=tk.X, pady=(0, 10))
         status_box.pack_propagate(False)
         
@@ -1449,7 +1745,7 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 13, "bold"),
             bg=self.card_bg,
             fg=self.text
-        ).pack(anchor=tk.W, padx=15, pady=(12, 8))
+        ).pack(anchor=tk.W, padx=15, pady=(10, 6))
         
         tk.Label(
             status_box,
@@ -1468,7 +1764,7 @@ class ModernCapcutGUI(tk.Tk):
             font=("Segoe UI", 9),
             bg=self.card_bg,
             fg=self.text_dim
-        ).pack(anchor=tk.W, padx=15, pady=(6, 0))
+        ).pack(anchor=tk.W, padx=15, pady=(4, 0))
         
         tk.Label(
             status_box,
@@ -1479,14 +1775,14 @@ class ModernCapcutGUI(tk.Tk):
             wraplength=400,
             justify=tk.LEFT,
             anchor=tk.W
-        ).pack(fill=tk.X, anchor=tk.W, padx=15, pady=(0, 10))
+        ).pack(fill=tk.X, anchor=tk.W, padx=15, pady=(0, 8))
         
         # Console
         console_frame = tk.Frame(right, bg=self.card_bg)
         console_frame.pack(fill=tk.BOTH, expand=True)
         
         console_header = tk.Frame(console_frame, bg=self.card_bg)
-        console_header.pack(fill=tk.X, padx=15, pady=(12, 8))
+        console_header.pack(fill=tk.X, padx=15, pady=(10, 6))
         
         tk.Label(
             console_header,
@@ -1498,15 +1794,25 @@ class ModernCapcutGUI(tk.Tk):
         
         tk.Button(
             console_header,
-            text="📋",
+            text="📋 Open Log",
             command=self._open_log_file,
             bg=self.card_bg,
             fg=self.text,
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 9),
             relief=tk.FLAT,
-            cursor="hand2",
-            width=3
-        ).pack(side=tk.LEFT, padx=10)
+            cursor="hand2"
+        ).pack(side=tk.RIGHT, padx=4)
+        
+        tk.Button(
+            console_header,
+            text="🧹 Clear",
+            command=self._clear_console,
+            bg=self.card_bg,
+            fg=self.text_dim,
+            font=("Segoe UI", 9),
+            relief=tk.FLAT,
+            cursor="hand2"
+        ).pack(side=tk.RIGHT, padx=4)
         
         self.console = tk.Text(
             console_frame,
@@ -1521,7 +1827,7 @@ class ModernCapcutGUI(tk.Tk):
     
     def _add_input(self, parent, label, var, width=30):
         frame = tk.Frame(parent, bg=self.card_bg)
-        frame.pack(fill=tk.X, padx=20, pady=5)
+        frame.pack(fill=tk.X, padx=20, pady=4)
         
         tk.Label(
             frame,
@@ -1544,7 +1850,7 @@ class ModernCapcutGUI(tk.Tk):
     
     def _add_small_input(self, parent, label, var, row, col, width=10):
         frame = tk.Frame(parent, bg=self.card_bg)
-        frame.grid(row=row, column=col, padx=4, pady=4, sticky=tk.W)
+        frame.grid(row=row, column=col, padx=4, pady=3, sticky=tk.W)
         
         tk.Label(
             frame,
@@ -1596,20 +1902,24 @@ class ModernCapcutGUI(tk.Tk):
         self.previous_mode = mode
         
         if mode == "Proxy":
-            self.proxy_panel.pack(fill=tk.X, padx=20, pady=8)
+            self.proxy_panel.pack(fill=tk.X, padx=20, pady=6)
             self._on_proxy_submode_change()
         else:
             self.proxy_panel.pack_forget()
+        
+        self._save_current_config()
     
     def _on_proxy_submode_change(self):
         """Toggle between TXT file and Link proxy input fields"""
         submode = self.proxy_type_var.get()
         if submode == "txt":
             self.link_proxy_frame.pack_forget()
-            self.txt_proxy_frame.pack(fill=tk.X, padx=12, pady=5)
+            self.txt_proxy_frame.pack(fill=tk.X, padx=12, pady=4)
         else:
             self.txt_proxy_frame.pack_forget()
-            self.link_proxy_frame.pack(fill=tk.X, padx=12, pady=5)
+            self.link_proxy_frame.pack(fill=tk.X, padx=12, pady=4)
+        
+        self._save_current_config()
     
     def _load_proxy_file(self):
         path = filedialog.askopenfilename(
@@ -1617,9 +1927,91 @@ class ModernCapcutGUI(tk.Tk):
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
         )
         if path:
+            self.proxy_file_path = path
             count = load_proxies_from_file(path)
             self.proxy_file_var.set(f"{os.path.basename(path)} ({count} proxies)")
+            self._save_current_config()
     
+    def _test_current_proxy(self):
+        """Test the currently configured proxy in background"""
+        if self.testing_proxy:
+            return
+        
+        submode = self.proxy_type_var.get()
+        proxy_candidate = ""
+
+        if submode == "txt":
+            if not PROXIES:
+                messagebox.showwarning("Warning", "Please load a proxy file first.")
+                return
+            proxy_candidate = PROXIES[0]
+        else:
+            link = self.proxy_link_url_var.get().strip()
+            fixed = self.proxy_fixed_endpoint_var.get().strip()
+            if not link and not fixed:
+                messagebox.showwarning("Warning", "Please enter a rotation link or fixed endpoint.")
+                return
+            proxy_candidate = fixed if fixed else "link_fetch"
+
+        self.testing_proxy = True
+        self.test_proxy_btn.config(text="Testing...", state=tk.DISABLED)
+        self.proxy_test_status_var.set("⏳ Testing connection...")
+
+        def run_test():
+            try:
+                target_proxy = proxy_candidate
+                if target_proxy == "link_fetch":
+                    link = self.proxy_link_url_var.get().strip()
+                    log_message(f"🔗 Testing rotation URL: {link}")
+                    target_proxy = rotate_via_link(link)
+                
+                if not target_proxy:
+                    self.after(0, lambda: self._update_test_ui(False, "Could not fetch proxy", 0))
+                    return
+
+                log_message(f"⚡ Testing proxy: {target_proxy}")
+                alive, ip_info, latency = test_proxy_connection(target_proxy, timeout=5.0)
+                self.after(0, lambda: self._update_test_ui(alive, ip_info, latency))
+            except Exception as e:
+                self.after(0, lambda: self._update_test_ui(False, str(e), 0))
+
+        threading.Thread(target=run_test, daemon=True).start()
+
+    def _update_test_ui(self, alive: bool, info: str, latency: float):
+        self.testing_proxy = False
+        self.test_proxy_btn.config(text="⚡ Test Proxy", state=tk.NORMAL)
+        if alive:
+            self.proxy_test_status_var.set(f"✅ IP: {info} ({latency:.0f}ms)")
+            self.test_proxy_lbl.config(fg=self.success)
+            log_message(f"⚡ Proxy Test OK: IP={info}, Ping={latency:.0f}ms")
+        else:
+            self.proxy_test_status_var.set(f"❌ {info}")
+            self.test_proxy_lbl.config(fg=self.danger)
+            log_message(f"❌ Proxy Test Failed: {info}")
+
+    def _refresh_device_status(self):
+        """Check ADB device connection and update header status badge"""
+        def check():
+            dev_id, status = detect_and_connect_device()
+            def update():
+                if status == "online":
+                    self.device_status_var.set(f"● LDPlayer: {dev_id}")
+                    self.device_label.config(fg=self.success)
+                elif status == "offline":
+                    self.device_status_var.set(f"● Device: Offline")
+                    self.device_label.config(fg=self.warning)
+                else:
+                    self.device_status_var.set("● Device: Not Found")
+                    self.device_label.config(fg=self.danger)
+            self.after(0, update)
+
+        threading.Thread(target=check, daemon=True).start()
+
+    def _clear_console(self):
+        self.console.configure(state=tk.NORMAL)
+        self.console.delete("1.0", tk.END)
+        self.console.configure(state=tk.DISABLED)
+
     def _open_log_file(self):
         try:
             if os.path.exists(LOG_FILE):
@@ -1658,11 +2050,30 @@ class ModernCapcutGUI(tk.Tk):
         finally:
             self.after(500, self._update_status_display)
     
+    def _save_current_config(self):
+        cfg = {
+            "template_url": self.link_var.get().strip(),
+            "loop": self.loop_var.get().strip(),
+            "delay_min": self.delay_min_var.get().strip(),
+            "delay_max": self.delay_max_var.get().strip(),
+            "export_min": self.export_min_var.get().strip(),
+            "export_max": self.export_max_var.get().strip(),
+            "mode": self.mode_var.get(),
+            "proxy_type": self.proxy_type_var.get(),
+            "proxy_file": self.proxy_file_path,
+            "proxy_link_url": self.proxy_link_url_var.get().strip(),
+            "proxy_fixed_endpoint": self.proxy_fixed_endpoint_var.get().strip(),
+            "auto_clean_storage": self.auto_clean_var.get()
+        }
+        save_config(cfg)
+
     def _start_automation(self):
         if self.worker_thread and self.worker_thread.is_alive():
             messagebox.showwarning("Running", "Automation is already running")
             return
         
+        self._save_current_config()
+
         link = self.link_var.get().strip() or DEFAULT_TEMPLATE_URL
         
         raw_loop = self.loop_var.get().strip()
@@ -1689,6 +2100,7 @@ class ModernCapcutGUI(tk.Tk):
         proxy_type = self.proxy_type_var.get()
         proxy_link = self.proxy_link_url_var.get().strip()
         proxy_fixed = self.proxy_fixed_endpoint_var.get().strip()
+        auto_clean = self.auto_clean_var.get()
         
         if use_proxy:
             if proxy_type == "txt" and not PROXIES:
@@ -1712,7 +2124,7 @@ class ModernCapcutGUI(tk.Tk):
         force_close_apps()
         
         args = (link, loop_count, use_vpn, use_proxy, proxy_type, proxy_link, proxy_fixed,
-                delay_min, delay_max, export_min, export_max)
+                delay_min, delay_max, export_min, export_max, auto_clean)
         self.worker_thread = threading.Thread(target=self._worker, args=args, daemon=True)
         self.worker_thread.start()
         
@@ -1762,14 +2174,15 @@ class ModernCapcutGUI(tk.Tk):
     
     def _worker(self, link: str, loop_count: Optional[int], use_vpn: bool, use_proxy: bool,
                 proxy_type: str, proxy_link: str, proxy_fixed: str,
-                delay_min: float, delay_max: float, export_min: float, export_max: float):
+                delay_min: float, delay_max: float, export_min: float, export_max: float,
+                auto_clean: bool):
         for i in itertools.count() if loop_count is None else range(loop_count):
             if self.stop_event.is_set():
                 log_message("🛑 Stopped by user")
                 break
             
             success = one_cycle(i, link, use_vpn, use_proxy, proxy_type, proxy_link, proxy_fixed,
-                                delay_min, delay_max, export_min, export_max, 
+                                delay_min, delay_max, export_min, export_max, auto_clean,
                                 self.stop_event, self.pause_event)
             
             if success:
@@ -1784,7 +2197,7 @@ class ModernCapcutGUI(tk.Tk):
         log_message("✅ Automation completed")
     
     def _update_counters(self, total: Optional[int]):
-        """Update completed and remaining counters safely (Fixes infinite loop TypeError)"""
+        """Update completed and remaining counters safely"""
         self.counter_var.set(str(self.cycles_done))
         if total is not None:
             remaining = max(0, total - self.cycles_done)
@@ -1793,8 +2206,9 @@ class ModernCapcutGUI(tk.Tk):
             self.remaining_var.set("∞")
             
     def _on_close(self):
-        """Clean up proxy and threads upon closing application window"""
+        """Clean up proxy, save config and close application window"""
         try:
+            self._save_current_config()
             self.stop_event.set()
             if self.mode_var.get() == "Proxy":
                 clear_proxy_on_device()

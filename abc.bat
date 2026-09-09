@@ -1,4 +1,3 @@
-```bat
 @echo off
 title Android Phone Control
 
@@ -20,4 +19,3 @@ if "%choice%"=="3" adb devices
 if "%choice%"=="4" exit
 
 pause
-```
