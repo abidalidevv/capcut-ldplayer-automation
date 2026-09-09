@@ -8,7 +8,7 @@
     ·
     <a href="#-getting-started"><strong>Quick Start »</strong></a>
     ·
-    <a href="#-proxy-configuration"><strong>Proxy Guide »</strong></a>
+    <a href="docs/DOCUMENTATION.md"><strong>Full Documentation »</strong></a>
   </p>
 
   ![Status](https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge)
@@ -125,8 +125,8 @@ Z-Build.bat
 ├── icon.png                    # Application icon
 ├── tools/                      # Bundled Android Platform Tools (adb.exe & DLLs)
 ├── docs/                       # Comprehensive guides & documentation
-│   ├── DOCUMENTATION.md        # Detailed usage & configuration guide
-│   └── PROJECT_SUMMARY.md      # Technical architecture documentation
+│   ├── [DOCUMENTATION.md](docs/DOCUMENTATION.md)        # Detailed usage & configuration guide
+│   └── [PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)      # Technical architecture documentation
 └── archive/                    # Archived scripts and previous builds
     └── builds/                 # Historical build binaries
 ```

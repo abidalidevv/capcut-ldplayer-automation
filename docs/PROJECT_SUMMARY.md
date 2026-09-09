@@ -23,12 +23,19 @@
 
 ```
 GAG/
-├── capcut_gui.py                    # Main application (1,235 lines)
-├── capcut_gui_FINAL_WORKING.py      # Restore point
-├── capcut_automation.log            # Runtime logs
-├── proxies.txt                      # User's proxy list (optional)
+├── capcut_gui.py                    # Main application
+├── CapcutAuto.exe                   # Standalone application
 ├── README.md                        # User documentation
-└── DOCUMENTATION.md                 # Technical documentation
+├── requirements.txt                 # Dependencies
+├── proxy.txt                        # User's proxy list
+├── test_proxies.txt                 # Test proxy list
+├── tools/                           # Bundled Android platform tools (adb.exe & DLLs)
+├── docs/                            # Documentation
+│   ├── DOCUMENTATION.md             # Technical reference
+│   └── PROJECT_SUMMARY.md           # Engineering summary
+└── archive/                         # Archived previous builds & scripts
+    ├── builds/                      # Previous build binaries
+    └── capcut_gui_FINAL_WORKING.py  # Historical backup restore point
 ```
 
 ---
@@ -376,20 +383,20 @@ def increment_export_counter():
 
 ## 🔄 Restore Points
 
-### **Primary**
+### **Primary Restore Point**
 ```
-capcut_gui_FINAL_WORKING.py
+archive/capcut_gui_FINAL_WORKING.py
 ```
 
 ### **To Restore**
 ```bash
-Copy-Item capcut_gui_FINAL_WORKING.py capcut_gui.py -Force
+Copy-Item archive/capcut_gui_FINAL_WORKING.py capcut_gui.py -Force
 ```
 
-### **Previous Backups**
-- `capcut_gui_FINAL_RESTORE_POINT.py`
-- `capcut_gui_RESTORE_POINT.py`
-- `capcut_gui - Copy.py`
+### **Archived Historical Builds**
+All previous test builds and copies are archived in:
+- `archive/builds/`
+- `archive/`
 
 ---
 
@@ -398,11 +405,9 @@ Copy-Item capcut_gui_FINAL_WORKING.py capcut_gui.py -Force
 | File | Purpose |
 |------|---------|
 | `README.md` | User guide and quick start |
-| `DOCUMENTATION.md` | Technical reference |
-| `PROJECT_SUMMARY.md` | This file - complete context |
-| `proxy_formats_guide.md` | Proxy format reference |
-| `final_checkpoint.md` | Final status checkpoint |
-| `advanced_features_guide.md` | Future feature ideas |
+| `docs/DOCUMENTATION.md` | Technical reference |
+| `docs/PROJECT_SUMMARY.md` | This file - complete context |
+| `requirements.txt` | Dependency declaration |
 
 ---
 
@@ -431,37 +436,34 @@ Copy-Item capcut_gui_FINAL_WORKING.py capcut_gui.py -Force
 
 ## 🎯 Current State
 
-**Version**: 2.0 Final  
+**Version**: 2.0 Production Ready  
 **Status**: ✅ Production Ready  
-**Last Updated**: December 8, 2025  
-**File**: `capcut_gui_FINAL_WORKING.py`
+**Active File**: `capcut_gui.py`  
+**Archived Reference**: `archive/capcut_gui_FINAL_WORKING.py`
 
 **All Features Working**:
 - ✅ NONE mode (100% tested)
 - ✅ VPN mode (tested)
-- ✅ Proxy mode (HTTP/HTTPS only)
-- ✅ No GUI freezing
-- ✅ Smart proxy management
-- ✅ Progress preservation
-- ✅ Export reliability
-
-**Ready For**:
-- Production use in all modes
-- Future enhancements
-- ProxyDroid integration
-- Additional features
+- ✅ Proxy mode (SOCKS5 & HTTP with User:Password authentication via built-in bridge)
+- ✅ Live Proxy Tester with Real IP and Ping (ms) feedback
+- ✅ Dead Proxy Auto-Skip (bina cycle break kiye next proxy pick karna)
+- ✅ Smart Export Completion Detection (15-25s faster per video)
+- ✅ Anti-Detection Humanized Click Jitter
+- ✅ Persistent Settings (config.json)
+- ✅ Device Auto-Detection & LDPlayer Port Probing
+- ✅ Auto Disk Space Cleaner
+- ✅ Clean modular directory structure (tools/, docs/, archive/)
 
 ---
 
 ## 💡 Tips for Future AI Tools
 
-1. **Always check** `capcut_gui_FINAL_WORKING.py` as the source of truth
-2. **Never remove** WiFi disable/enable - already removed, don't add back
-3. **Always use** background threads for ADB commands
+1. **Active file** is `capcut_gui.py` (do not confuse with archive)
+2. **Platform Tools** are located in `tools/` (adb.exe, etc.)
+3. **Always use** background threads for ADB commands and proxy testing
 4. **Preserve** the mode change logic with `previous_mode` tracking
-5. **Keep** NONE/VPN/GUI unchanged - they work perfectly
-6. **Test** any changes with NONE mode first
-7. **Update** this file when adding new features
+5. **Keep** local proxy bridge on port 8889 and test bridge on port 8890
+6. **Update** this file and `docs/DOCUMENTATION.md` when adding new features
 
 ---
 
