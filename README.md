@@ -35,10 +35,17 @@ It automates the full creation lifecycle:
 ## ✨ Key Features
 
 - **🎨 Modern Glassmorphism GUI**: Dark theme UI built with Tkinter, real-time live console, dynamic status updates, and countdown timers.
+- **⚡ Real-Time Proxy Tester**: One-click **"⚡ Test Proxy"** button displays active Public IP, Country, and Ping latency in milliseconds directly on the UI and console.
+- **🛡️ Dead Proxy Auto-Skip**: Automatically probes proxy health before starting each cycle; dead or unresponsive proxies are skipped without interrupting the queue.
 - **🌐 Advanced SOCKS5 & Authenticated Proxy Support**:
   - Built-in **Zero-Config Python Proxy Bridge** (`0.0.0.0:8889`): Routes Android traffic to upstream SOCKS5 and HTTP proxies with full `Username:Password` authentication without requiring any extra APK or root on LDPlayer!
   - **📁 TXT File Rotation**: Load a `.txt` list of proxies; rotates automatically every cycle.
   - **🔗 Rotating Proxy Link / API**: Trigger mobile proxy IP refresh URLs or dynamic proxy fetch APIs before each cycle.
+- **🚀 Smart Early Export Completion**: Inspects UIAutomator hierarchy to detect when rendering finishes ("Ready to share" / "Done") and skips remaining sleep—saving **15–25 seconds per video**!
+- **🎯 Anti-Detection Click Jitter**: Applies randomized humanized micro-offsets (`±4px`) to tap coordinates to avoid anti-bot fingerprinting.
+- **💾 Persistent Settings (`config.json`)**: Automatically saves and restores all inputs (Template URL, loops, delays, proxy settings) across sessions.
+- **📱 LDPlayer Live Status & Auto-Reconnect**: Real-time emulator connection badge with one-click port probing (`127.0.0.1:5555`, `emulator-5554`).
+- **🧹 Storage Full Protection**: Optional auto-cleaner removes rendered `.mp4` videos from the emulator after each cycle while keeping source gallery images safe.
 - **🛡️ Fixed VPN Lifecycle**: Automated Windscribe VPN connect, minimize during cycle, and graceful disconnect at cycle end.
 - **🧠 Smart Screen & Popup Handler**: Auto-dismisses Android disambiguation dialogs (*"Open with"*) and media permission prompts.
 - **⚡ Safe Coordinate Fallback**: Uses UI dump inspection when available, with automatic fallback to calibrated screen coordinates.
@@ -107,13 +114,14 @@ Z-Build.bat
 | **Min / Max Delay** | `6s / 9s` | Random jitter delay between browser actions for human-like behavior. |
 | **Export Min / Max** | `25s / 40s` | Estimated duration for CapCut video rendering. |
 | **Connection Mode** | `None` | Choose between `None` (Direct), `VPN` (Windscribe), or `Proxy`. |
+| **Auto-Clean Storage** | `Off` | Automatically deletes rendered MP4s from emulator to prevent disk saturation. |
 
 ---
 
 ## 📁 Repository Structure
 
 ```text
-├── capcut_gui.py               # Main application source code
+├── capcut_gui.py               # Main application source code (v2.0)
 ├── CapcutAuto.exe              # Standalone compiled Windows executable
 ├── README.md                   # Project documentation
 ├── requirements.txt           # Dependency declaration
@@ -125,8 +133,10 @@ Z-Build.bat
 ├── icon.png                    # Application icon
 ├── tools/                      # Bundled Android Platform Tools (adb.exe & DLLs)
 ├── docs/                       # Comprehensive guides & documentation
-│   ├── [DOCUMENTATION.md](docs/DOCUMENTATION.md)        # Detailed usage & configuration guide
-│   └── [PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)      # Technical architecture documentation
+│   ├── [BRAIN.md](docs/BRAIN.md)                # Master architectural blueprint & engine specification
+│   ├── [DOCUMENTATION.md](docs/DOCUMENTATION.md)        # Detailed technical usage & config guide
+│   └── [PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)      # Engineering reference summary
+├── OLD/                        # Dedicated folder for manual old versions
 └── archive/                    # Archived scripts and previous builds
     └── builds/                 # Historical build binaries
 ```
